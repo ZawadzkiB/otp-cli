@@ -18,16 +18,15 @@ A fast, secure command-line TOTP (Time-based One-Time Password) manager. Generat
 
 ### One-line install (macOS/Linux)
 
-```bash
-# Install to /usr/local/bin (requires sudo)
-curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.1/otp -o /tmp/otp && sudo mv /tmp/otp /usr/local/bin/otp && sudo chmod +x /usr/local/bin/otp
-```
+> Install to /usr/local/bin (requires sudo)
+> ```bash
+> curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.1/otp -o /tmp/otp && sudo mv /tmp/otp /usr/local/bin/otp && sudo chmod +x /usr/local/bin/otp
+> ```
 
-```bash
-# Or install to ~/bin (no sudo required)
-mkdir -p ~/bin && curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.1/otp -o ~/bin/otp && chmod +x ~/bin/otp
-```
-
+> Or install to ~/bin (no sudo required)
+>```bash
+> mkdir -p ~/bin && curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.1/otp -o ~/bin/otp && chmod +x ~/bin/otp
+> ```
 > Note: If using `~/bin`, make sure it's in your PATH:
 > ```bash
 > echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
