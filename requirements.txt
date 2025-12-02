@@ -1,0 +1,8 @@
+# Required for clipboard support
+pyperclip>=1.8.0
+
+# Required for encryption (recommended)
+cryptography>=41.0.0
+
+# Required for QR code scanning (optional)
+opencv-python-headless>=4.8.0

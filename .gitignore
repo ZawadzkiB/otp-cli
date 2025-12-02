@@ -1,0 +1,24 @@
+# Virtual environment
+.venv/
+
+# PyInstaller build artifacts
+build/
+*.spec
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local secrets (never commit)
+secrets.json
+*.cache
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
