@@ -4,9 +4,9 @@ A fast, secure command-line TOTP (Time-based One-Time Password) manager. Generat
 
 ## Why OTP CLI?
 
-- **Fast** - Get codes instantly with a single command
+- **Fast** - Get codes instantly with a single command (~1s startup)
 - **Secure** - AES-256 encryption with master password protection
-- **Portable** - Single binary, no dependencies required
+- **Portable** - Standalone binaries, no dependencies required
 - **Private** - Everything stored locally, no cloud sync
 - **Import-friendly** - Scan QR codes or import from Google Authenticator
 
@@ -16,25 +16,41 @@ A fast, secure command-line TOTP (Time-based One-Time Password) manager. Generat
 
 ## Quick Install
 
+OTP CLI comes as two binaries:
+- **`otp`** - Fast (~1s startup) for daily use: get, list, add, edit, remove, export, import, cache, init
+- **`otp-scan`** - QR code scanning (~4s startup, includes OpenCV)
+
 ### One-line install (macOS/Linux)
 
-> Install to /usr/local/bin (requires sudo)
-> ```bash
-> curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.1/otp -o /tmp/otp && sudo mv /tmp/otp /usr/local/bin/otp && sudo chmod +x /usr/local/bin/otp
-> ```
+**Install to /usr/local/bin (requires sudo):**
+```bash
+curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.2/otp -o /tmp/otp && \
+curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.2/otp-scan -o /tmp/otp-scan && \
+sudo mv /tmp/otp /tmp/otp-scan /usr/local/bin/ && \
+sudo chmod +x /usr/local/bin/otp /usr/local/bin/otp-scan
+```
 
-> Or install to ~/bin (no sudo required)
->```bash
-> mkdir -p ~/bin && curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.1/otp -o ~/bin/otp && chmod +x ~/bin/otp
-> ```
+**Or install to ~/bin (no sudo required):**
+```bash
+mkdir -p ~/bin && \
+curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.2/otp -o ~/bin/otp && \
+curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.2/otp-scan -o ~/bin/otp-scan && \
+chmod +x ~/bin/otp ~/bin/otp-scan
+```
+
 > Note: If using `~/bin`, make sure it's in your PATH:
 > ```bash
 > echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
 > ```
 
+**Install only the fast binary (skip QR scanning):**
+```bash
+curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.2/otp -o ~/bin/otp && chmod +x ~/bin/otp
+```
+
 ### Manual download
 
-Download the binary from the releases page and place it in your PATH.
+Download binaries from the [releases page](https://github.com/ZawadzkiB/otp-cli/releases) and place them in your PATH.
 
 ## Getting Started
 
@@ -56,7 +72,7 @@ You'll be prompted to create and confirm a master password. This password encryp
 Take a screenshot of your 2FA QR code, then:
 
 ```bash
-otp scan ~/Desktop/qr-screenshot.png
+otp-scan ~/Desktop/qr-screenshot.png
 ```
 
 This works with:
@@ -68,7 +84,7 @@ This works with:
 1. Open Google Authenticator app
 2. Tap menu (⋮) → Transfer accounts → Export accounts
 3. Screenshot the QR code
-4. Run: `otp scan screenshot.png`
+4. Run: `otp-scan screenshot.png`
 
 **Option C: Add manually**
 
@@ -152,10 +168,10 @@ otp export github
 ### Scan QR code from image
 
 ```bash
-otp scan screenshot.png
+otp-scan screenshot.png
 
 # Preview without importing
-otp scan screenshot.png --dry-run
+otp-scan screenshot.png --dry-run
 ```
 
 ### Import from Google Authenticator URI
@@ -210,9 +226,11 @@ otp init
 ### Using Makefile
 
 ```bash
-make build        # Build the binary
-make install      # Build + install to /usr/local/bin (requires sudo)
-make install-user # Build + install to ~/bin (no sudo)
+make build        # Build fast otp binary (no OpenCV)
+make build-scan   # Build otp-scan binary (with OpenCV)
+make all          # Build both binaries
+make install      # Build both + install to /usr/local/bin (requires sudo)
+make install-user # Build both + install to ~/bin (no sudo)
 make clean        # Remove build artifacts
 ```
 
@@ -224,12 +242,16 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # Install dependencies
-pip install pyinstaller pyperclip cryptography opencv-python-headless
+pip install pyinstaller pyperclip cryptography
 
-# Build standalone binary
-pyinstaller --onefile --name otp --clean otp.py
+# Build fast binary (excludes OpenCV)
+pyinstaller --onefile --name otp --clean --exclude-module cv2 --exclude-module numpy otp.py
 
-# Binary is at ./dist/otp
+# Build scan binary (includes OpenCV)
+pip install opencv-python-headless
+pyinstaller --onefile --name otp-scan --clean otp_scan.py
+
+# Binaries are at ./dist/otp and ./dist/otp-scan
 ```
 
 ### Run directly with Python
@@ -255,16 +277,18 @@ alias otp='python3 /path/to/otp.py'
 
 Without `cryptography`, secrets are stored in plain text (not recommended).
 Without `pyperclip`, codes won't auto-copy to clipboard.
-Without `opencv-python-headless`, `otp scan` command won't work.
+Without `opencv-python-headless`, `otp-scan` command won't work.
 
 ## Project Structure
 
 ```
 otp-cli/
 ├── otp.py           # Main CLI application
-├── requirements.txt # Python dependencies
+├── otp_scan.py      # QR scanner module (separate binary)
 ├── Makefile         # Build automation
-├── dist/            # Built binary (not gitignored)
+├── dist/            # Built binaries (not gitignored)
+│   ├── otp          # Fast binary (~5MB)
+│   └── otp-scan     # Scanner binary (~50MB)
 └── README.md
 ```
 
@@ -272,7 +296,9 @@ otp-cli/
 
 - **TOTP Implementation**: RFC 6238 compliant
 - **HOTP Implementation**: RFC 4226 compliant
-- **Binary Size**: ~50MB (includes Python runtime + OpenCV)
+- **Binary Sizes**:
+  - `otp`: ~5MB (fast, no OpenCV)
+  - `otp-scan`: ~50MB (includes Python runtime + OpenCV)
 - **Supported Platforms**: macOS, Linux (x64, arm64)
 
 ## License
