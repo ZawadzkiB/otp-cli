@@ -407,16 +407,8 @@ def cmd_list(args):
 def cmd_remove(args):
     """Remove an OTP secret"""
     alias = args.alias.lower()
-    
-    password = None
-    storage_path = get_storage_path()
-    if storage_path.exists():
-        with open(storage_path, "r") as f:
-            existing = json.load(f)
-        if existing.get("encrypted"):
-            password = getpass("Enter master password: ")
-    
-    secrets = load_secrets(password)
+
+    secrets = load_secrets()
     
     if alias not in secrets:
         print(f"Error: Alias '{alias}' not found")
@@ -429,7 +421,7 @@ def cmd_remove(args):
             return
     
     del secrets[alias]
-    save_secrets(secrets, password)
+    save_secrets(secrets)
     print(f"✓ Removed '{alias}'")
 
 
@@ -437,15 +429,7 @@ def cmd_edit(args):
     """Edit an existing OTP secret"""
     alias = args.alias.lower()
 
-    password = None
-    storage_path = get_storage_path()
-    if storage_path.exists():
-        with open(storage_path, "r") as f:
-            existing = json.load(f)
-        if existing.get("encrypted"):
-            password = getpass("Enter master password: ")
-
-    secrets = load_secrets(password)
+    secrets = load_secrets()
 
     if alias not in secrets:
         print(f"Error: Alias '{alias}' not found")
@@ -483,7 +467,7 @@ def cmd_edit(args):
         alias = new_alias
 
     secrets[alias] = entry
-    save_secrets(secrets, password)
+    save_secrets(secrets)
     print(f"✓ Updated '{alias}'")
 
 
