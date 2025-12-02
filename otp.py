@@ -21,28 +21,65 @@ import time
 from pathlib import Path
 from getpass import getpass
 
+# Debug mode flag (set by --debug argument)
+# Check early so import timing is visible
+DEBUG_MODE = "--debug" in sys.argv
+_start_time = time.time()
+
+
+def debug_log(message: str):
+    """Print debug message with timestamp if debug mode is enabled"""
+    if DEBUG_MODE:
+        elapsed = (time.time() - _start_time) * 1000  # ms
+        print(f"[DEBUG +{elapsed:7.1f}ms] {message}", file=sys.stderr)
+
+
+debug_log("Starting imports...")
+
 # Optional: for clipboard support
+debug_log("Importing pyperclip...")
 try:
     import pyperclip
     CLIPBOARD_AVAILABLE = True
+    debug_log("pyperclip loaded")
 except ImportError:
     CLIPBOARD_AVAILABLE = False
+    debug_log("pyperclip not available")
 
 # Optional: for encryption
+debug_log("Importing cryptography...")
 try:
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
     ENCRYPTION_AVAILABLE = True
+    debug_log("cryptography loaded")
 except ImportError:
     ENCRYPTION_AVAILABLE = False
+    debug_log("cryptography not available")
 
-# Optional: for QR code scanning
-try:
-    import cv2
-    QR_AVAILABLE = True
-except ImportError:
-    QR_AVAILABLE = False
+# QR code scanning - lazy loaded only when needed (cv2 is slow to import)
+QR_AVAILABLE = None  # None = not checked yet, True/False = checked
+cv2 = None
+
+
+def load_cv2():
+    """Lazy load cv2 only when needed for QR scanning"""
+    global QR_AVAILABLE, cv2
+    if QR_AVAILABLE is None:
+        debug_log("Importing cv2 (opencv)...")
+        try:
+            import cv2 as _cv2
+            cv2 = _cv2
+            QR_AVAILABLE = True
+            debug_log("cv2 loaded")
+        except ImportError:
+            QR_AVAILABLE = False
+            debug_log("cv2 not available")
+    return QR_AVAILABLE
+
+
+debug_log("All imports complete")
 
 
 # ==================== TOTP Implementation ====================
@@ -146,8 +183,10 @@ def set_cache_ttl(ttl_name: str):
 
 def get_cached_password() -> str | None:
     """Get cached password if still valid"""
+    debug_log("Checking password cache...")
     cache_path = get_cache_path()
     if not cache_path.exists():
+        debug_log("No cache file found")
         return None
 
     try:
@@ -156,8 +195,10 @@ def get_cached_password() -> str | None:
         expires = cache.get("expires", 0)
         # expires == 0 means forever
         if expires == 0 or expires > time.time():
+            debug_log("Using cached password")
             return cache.get("password")
         else:
+            debug_log("Cache expired")
             cache_path.unlink(missing_ok=True)
     except Exception:
         pass
@@ -188,16 +229,19 @@ def get_storage_path() -> Path:
 
 def derive_key(password: str, salt: bytes) -> bytes:
     """Derive encryption key from password"""
+    debug_log("Deriving encryption key (PBKDF2)...")
     if not ENCRYPTION_AVAILABLE:
         raise RuntimeError("cryptography package not installed")
-    
+
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
         iterations=480000,
     )
-    return base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    result = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    debug_log("Key derivation complete")
+    return result
 
 
 def encrypt_data(data: str, password: str) -> dict:
@@ -223,15 +267,19 @@ def decrypt_data(stored: dict, password: str) -> str:
 
 def load_secrets(password: str = None) -> dict:
     """Load secrets from storage"""
+    debug_log("Loading secrets...")
     storage_path = get_storage_path()
 
     if not storage_path.exists():
+        debug_log("No storage file found")
         return {}
 
+    debug_log("Reading storage file...")
     with open(storage_path, "r") as f:
         stored = json.load(f)
 
     if stored.get("encrypted"):
+        debug_log("Storage is encrypted")
         if not ENCRYPTION_AVAILABLE:
             print("Error: Secrets are encrypted but cryptography package is not installed")
             print("Install with: pip install cryptography")
@@ -240,16 +288,21 @@ def load_secrets(password: str = None) -> dict:
         if password is None:
             password = get_cached_password()
         if password is None:
+            debug_log("Prompting for master password...")
             password = getpass("Enter master password: ")
 
         try:
+            debug_log("Decrypting data...")
             decrypted = decrypt_data(stored, password)
+            debug_log("Setting password cache...")
             set_cached_password(password)
+            debug_log("Secrets loaded successfully")
             return json.loads(decrypted)
         except Exception:
             print("Error: Invalid password or corrupted data")
             sys.exit(1)
 
+    debug_log("Storage not encrypted, loading directly")
     return stored.get("secrets", {})
 
 
@@ -730,7 +783,8 @@ def cmd_scan(args):
     """Scan QR code from image file"""
     from urllib.parse import unquote, urlparse, parse_qs
 
-    if not QR_AVAILABLE:
+    # Lazy load cv2 only when scan command is used
+    if not load_cv2():
         print("Error: opencv-python-headless required for QR scanning")
         print("Install with: pip install opencv-python-headless")
         sys.exit(1)
@@ -936,10 +990,13 @@ def cmd_cache(args):
 # ==================== Main ====================
 
 def main():
+    debug_log("Entering main()")
+
     parser = argparse.ArgumentParser(
         description="OTP CLI - A simple command-line TOTP manager",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging with timing")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     
     # Add command
