@@ -91,13 +91,57 @@ def get_time_remaining(period: int = 30) -> int:
 
 # ==================== Password Cache ====================
 
-PASSWORD_CACHE_TTL = 300  # 5 minutes
+CACHE_TTL_OPTIONS = {
+    "1min": 60,
+    "5min": 300,
+    "day": 86400,
+    "forever": 0,  # 0 means no expiration
+}
+DEFAULT_CACHE_TTL = "5min"
 
 
 def get_cache_path() -> Path:
     """Get the path to the password cache file"""
     xdg_runtime = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
     return Path(xdg_runtime) / f"otp-cli-{os.getuid()}.cache"
+
+
+def get_config_path() -> Path:
+    """Get the path to the config file"""
+    xdg_data = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+    config_dir = Path(xdg_data) / "otp-cli"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir / "config.json"
+
+
+def get_cache_ttl() -> int:
+    """Get the configured cache TTL in seconds (0 = forever)"""
+    config_path = get_config_path()
+    if config_path.exists():
+        try:
+            with open(config_path, "r") as f:
+                config = json.load(f)
+            ttl_name = config.get("cache_ttl", DEFAULT_CACHE_TTL)
+            return CACHE_TTL_OPTIONS.get(ttl_name, CACHE_TTL_OPTIONS[DEFAULT_CACHE_TTL])
+        except Exception:
+            pass
+    return CACHE_TTL_OPTIONS[DEFAULT_CACHE_TTL]
+
+
+def set_cache_ttl(ttl_name: str):
+    """Set the cache TTL configuration"""
+    config_path = get_config_path()
+    config = {}
+    if config_path.exists():
+        try:
+            with open(config_path, "r") as f:
+                config = json.load(f)
+        except Exception:
+            pass
+    config["cache_ttl"] = ttl_name
+    with open(config_path, "w") as f:
+        json.dump(config, f)
+    os.chmod(config_path, 0o600)
 
 
 def get_cached_password() -> str | None:
@@ -109,7 +153,9 @@ def get_cached_password() -> str | None:
     try:
         with open(cache_path, "r") as f:
             cache = json.load(f)
-        if cache.get("expires", 0) > time.time():
+        expires = cache.get("expires", 0)
+        # expires == 0 means forever
+        if expires == 0 or expires > time.time():
             return cache.get("password")
         else:
             cache_path.unlink(missing_ok=True)
@@ -119,9 +165,11 @@ def get_cached_password() -> str | None:
 
 
 def set_cached_password(password: str):
-    """Cache password for TTL seconds"""
+    """Cache password based on configured TTL"""
     cache_path = get_cache_path()
-    cache = {"password": password, "expires": time.time() + PASSWORD_CACHE_TTL}
+    ttl = get_cache_ttl()
+    expires = 0 if ttl == 0 else time.time() + ttl
+    cache = {"password": password, "expires": expires}
     with open(cache_path, "w") as f:
         json.dump(cache, f)
     os.chmod(cache_path, 0o600)
@@ -872,6 +920,35 @@ def cmd_init(args):
         print("✓ OTP storage initialized with encryption")
 
 
+def cmd_cache(args):
+    """Configure password cache duration"""
+    if args.duration:
+        if args.duration not in CACHE_TTL_OPTIONS:
+            print(f"Error: Invalid duration. Choose from: {', '.join(CACHE_TTL_OPTIONS.keys())}")
+            sys.exit(1)
+        set_cache_ttl(args.duration)
+        if args.duration == "forever":
+            print("✓ Password will be cached forever (until logout/reboot)")
+        else:
+            print(f"✓ Password cache duration set to {args.duration}")
+        # Clear existing cache so new TTL applies on next use
+        cache_path = get_cache_path()
+        cache_path.unlink(missing_ok=True)
+    else:
+        # Show current setting
+        config_path = get_config_path()
+        current = DEFAULT_CACHE_TTL
+        if config_path.exists():
+            try:
+                with open(config_path, "r") as f:
+                    config = json.load(f)
+                current = config.get("cache_ttl", DEFAULT_CACHE_TTL)
+            except Exception:
+                pass
+        print(f"Current cache duration: {current}")
+        print(f"Available options: {', '.join(CACHE_TTL_OPTIONS.keys())}")
+
+
 # ==================== Main ====================
 
 def main():
@@ -928,6 +1005,11 @@ def main():
     scan_parser.add_argument("image", help="Path to image file containing QR code")
     scan_parser.add_argument("--dry-run", "-n", action="store_true", help="Show what would be imported without saving")
 
+    # Cache command
+    cache_parser = subparsers.add_parser("cache", help="Configure password cache duration")
+    cache_parser.add_argument("duration", nargs="?", choices=["1min", "5min", "day", "forever"],
+                              help="Cache duration: 1min, 5min, day, or forever")
+
     args = parser.parse_args()
     
     if args.command is None:
@@ -944,6 +1026,7 @@ def main():
         "init": cmd_init,
         "import": cmd_import,
         "scan": cmd_scan,
+        "cache": cmd_cache,
     }
     
     commands[args.command](args)
