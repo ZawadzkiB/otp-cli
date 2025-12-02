@@ -1041,8 +1041,8 @@ def main():
     import_parser.add_argument("uri", help="otpauth-migration:// URI from Google Authenticator export")
     import_parser.add_argument("--dry-run", "-n", action="store_true", help="Show what would be imported without saving")
 
-    # Scan command
-    scan_parser = subparsers.add_parser("scan", help="Scan QR code from image file")
+    # Scan command - note: use separate 'otp-scan' binary for QR scanning (faster startup)
+    scan_parser = subparsers.add_parser("scan", help="Scan QR code (use 'otp-scan' for faster startup)")
     scan_parser.add_argument("image", help="Path to image file containing QR code")
     scan_parser.add_argument("--dry-run", "-n", action="store_true", help="Show what would be imported without saving")
 
