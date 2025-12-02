@@ -1,124 +1,127 @@
 # OTP CLI
 
-A simple command-line TOTP (Time-based One-Time Password) manager.
+A fast, secure command-line TOTP (Time-based One-Time Password) manager. Generate 2FA codes directly from your terminal without needing a phone app.
 
-## Features
+## Why OTP CLI?
 
-- Store 2FA secrets with aliases
-- Generate TOTP codes from CLI
-- Auto-copy to clipboard
-- Encrypted storage with master password
-- Export secrets for backup
+- **Fast** - Get codes instantly with a single command
+- **Secure** - AES-256 encryption with master password protection
+- **Portable** - Single binary, no dependencies required
+- **Private** - Everything stored locally, no cloud sync
+- **Import-friendly** - Scan QR codes or import from Google Authenticator
 
-## Installation
+---
 
-### Option A: Pre-built binary (recommended)
+# User Guide
 
-Download the pre-built binary from the releases page and copy it to your PATH:
+## Quick Install
+
+### One-line install (macOS/Linux)
 
 ```bash
-# macOS/Linux
-sudo cp otp /usr/local/bin/otp
-
-# Or user-local installation (no sudo required)
-mkdir -p ~/bin
-cp otp ~/bin/otp
-echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
+# Install to /usr/local/bin (requires sudo)
+curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.1/otp -o /tmp/otp && sudo mv /tmp/otp /usr/local/bin/otp && sudo chmod +x /usr/local/bin/otp
 ```
 
-### Option B: Build from source
-
-If you prefer to build the binary yourself:
-
 ```bash
-# Using Makefile (recommended)
-make build        # Build the binary
-make install      # Build + install to /usr/local/bin (sudo)
-make install-user # Build + install to ~/bin (no sudo)
-make clean        # Remove build artifacts
+# Or install to ~/bin (no sudo required)
+mkdir -p ~/bin && curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.1/otp -o ~/bin/otp && chmod +x ~/bin/otp
 ```
 
-Or manually:
+> Note: If using `~/bin`, make sure it's in your PATH:
+> ```bash
+> echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+> ```
+
+### Manual download
+
+Download the binary from the releases page and place it in your PATH.
+
+## Getting Started
+
+### 1. Set up master password
+
+First time using OTP CLI? Create a master password to encrypt your secrets:
 
 ```bash
-# Create virtual environment and install dependencies
-python3 -m venv .venv
-source .venv/bin/activate
-pip install pyinstaller pyperclip cryptography
-
-# Build standalone binary
-pyinstaller --onefile --name otp --clean otp.py
-
-# The binary will be at ./dist/otp
-sudo cp ./dist/otp /usr/local/bin/otp
-```
-
-### Option C: Run with Python
-
-If you have Python installed and prefer not to use a binary:
-
-```bash
-# Install dependencies
-pip install pyperclip cryptography
-
-# Add alias to your shell
-echo "alias otp='python3 $(pwd)/otp.py'" >> ~/.zshrc
-source ~/.zshrc
-```
-
-## Usage
-
-### Initialize (set master password)
-
-```bash
+#setup master password
 otp init
 ```
 
-### Add a secret
+You'll be prompted to create and confirm a master password. This password encrypts all your 2FA secrets.
+
+### 2. Import your existing 2FA codes
+
+**Option A: Scan a QR code image (easiest)**
+
+Take a screenshot of your 2FA QR code, then:
 
 ```bash
-# Basic
-otp add github JBSWY3DPEHPK3PXP
-
-# With issuer name
-otp add github JBSWY3DPEHPK3PXP --issuer GitHub
-
-# With custom digits/period
-otp add steam ABCDEFGHIJK --digits 5 --period 30
+otp scan ~/Desktop/qr-screenshot.png
 ```
 
-### Get a code
+This works with:
+- Standard TOTP QR codes from any service
+- Google Authenticator export QR codes
+
+**Option B: Import from Google Authenticator**
+
+1. Open Google Authenticator app
+2. Tap menu (⋮) → Transfer accounts → Export accounts
+3. Screenshot the QR code
+4. Run: `otp scan screenshot.png`
+
+**Option C: Add manually**
+
+If you have the secret key:
+
+```bash
+otp add github JBSWY3DPEHPK3PXP --issuer GitHub
+```
+
+### 3. Generate codes
 
 ```bash
 otp get github
-# Output: 123456 (copied to clipboard)
+# Output: 123456 (automatically copied to clipboard)
+```
 
-# With time remaining
+That's it! The code is generated and copied to your clipboard.
+
+## Command Reference
+
+### Generate a code
+
+```bash
+otp get <alias>
+
+# Show time remaining until code expires
 otp get github -v
 # Output: 123456 (copied to clipboard)
 # Valid for 18s
 ```
 
-### List all secrets
+### List all entries
 
 ```bash
 otp list
 ```
 
-### Remove a secret
+### Add a new entry
 
 ```bash
-otp remove github
+otp add <alias> <secret> [options]
 
-# Skip confirmation
-otp remove github -f
+# Examples:
+otp add github JBSWY3DPEHPK3PXP
+otp add github JBSWY3DPEHPK3PXP --issuer GitHub
+otp add steam ABCDEFGHIJK --digits 5 --period 30
 ```
 
-### Edit a secret
+### Edit an entry
 
 ```bash
-# Rename an alias
+# Rename alias
 otp edit github --rename gh
 
 # Change issuer
@@ -127,8 +130,17 @@ otp edit github --issuer "GitHub Inc"
 # Update secret key
 otp edit github --secret NEWSECRETKEY
 
-# Multiple changes at once
+# Multiple changes
 otp edit github --rename gh --issuer "GitHub Inc"
+```
+
+### Remove an entry
+
+```bash
+otp remove github
+
+# Skip confirmation prompt
+otp remove github -f
 ```
 
 ### Export (for backup)
@@ -138,61 +150,132 @@ otp export github
 # Shows secret and otpauth:// URI for QR code generation
 ```
 
-## Storage
-
-Secrets are stored encrypted in:
-- Linux/macOS: `~/.local/share/otp-cli/secrets.json`
-- The file has 600 permissions (owner read/write only)
-
-## Importing from Google Authenticator
-
-### Option 1: Scan QR code from image (easiest)
+### Scan QR code from image
 
 ```bash
-# Scan a screenshot of the QR code
 otp scan screenshot.png
 
 # Preview without importing
 otp scan screenshot.png --dry-run
 ```
 
-Supports both:
-- Standard TOTP QR codes (`otpauth://totp/...`)
-- Google Authenticator export QR codes (`otpauth-migration://...`)
-
-### Option 2: Import from URI
-
-1. Open Google Authenticator
-2. Tap ⋮ → Transfer accounts → Export accounts
-3. Use a QR code scanner app to get the `otpauth-migration://` URI
-4. Import directly:
+### Import from Google Authenticator URI
 
 ```bash
-# Preview what will be imported (dry run)
-otp import --dry-run 'otpauth-migration://offline?data=...'
-
-# Import all entries
 otp import 'otpauth-migration://offline?data=...'
+
+# Preview first
+otp import --dry-run 'otpauth-migration://offline?data=...'
 ```
 
-### Option 3: Add manually
+### Configure password caching
+
+By default, your master password is cached for 5 minutes. You can change this:
 
 ```bash
-otp add gmail YOUR_SECRET_KEY --issuer Google
-otp add github YOUR_SECRET_KEY --issuer GitHub
+# Show current setting
+otp cache
+
+# Set cache duration
+otp cache 1min     # 1 minute
+otp cache 5min     # 5 minutes (default)
+otp cache day      # 24 hours
+otp cache forever  # Until logout/reboot
 ```
 
-## Security Notes
+### Change master password
 
-- Secrets are encrypted with AES-256 (Fernet) using PBKDF2 key derivation
-- Master password is never stored
-- Storage file has restrictive permissions (600)
-- Consider using a strong, unique master password
+```bash
+otp init
+# Enter current password, then new password
+```
+
+## Storage & Security
+
+- **Location**: `~/.local/share/otp-cli/secrets.json`
+- **Encryption**: AES-256 (Fernet) with PBKDF2 key derivation
+- **Permissions**: File has 600 permissions (owner read/write only)
+- **Password**: Never stored, only used to derive encryption key
+
+---
+
+# Development
+
+## Building from Source
+
+### Prerequisites
+
+- Python 3.8+
+- Make (optional but recommended)
+
+### Using Makefile
+
+```bash
+make build        # Build the binary
+make install      # Build + install to /usr/local/bin (requires sudo)
+make install-user # Build + install to ~/bin (no sudo)
+make clean        # Remove build artifacts
+```
+
+### Manual build
+
+```bash
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install pyinstaller pyperclip cryptography opencv-python-headless
+
+# Build standalone binary
+pyinstaller --onefile --name otp --clean otp.py
+
+# Binary is at ./dist/otp
+```
+
+### Run directly with Python
+
+```bash
+# Install dependencies
+pip install pyperclip cryptography opencv-python-headless
+
+# Run
+python3 otp.py get github
+
+# Or create an alias
+alias otp='python3 /path/to/otp.py'
+```
 
 ## Dependencies
 
-- `pyperclip` - Clipboard support
-- `cryptography` - Encryption (optional but recommended)
+| Package | Purpose | Required |
+|---------|---------|----------|
+| `pyperclip` | Clipboard support | Optional |
+| `cryptography` | AES-256 encryption | Recommended |
+| `opencv-python-headless` | QR code scanning | Optional |
 
-Without `cryptography`, secrets will be stored in plain text (not recommended).
-Without `pyperclip`, codes won't be copied to clipboard automatically.
+Without `cryptography`, secrets are stored in plain text (not recommended).
+Without `pyperclip`, codes won't auto-copy to clipboard.
+Without `opencv-python-headless`, `otp scan` command won't work.
+
+## Project Structure
+
+```
+otp-cli/
+├── otp.py           # Main CLI application
+├── requirements.txt # Python dependencies
+├── Makefile         # Build automation
+├── dist/            # Built binary (not gitignored)
+└── README.md
+```
+
+## Technical Details
+
+- **TOTP Implementation**: RFC 6238 compliant
+- **HOTP Implementation**: RFC 4226 compliant
+- **Binary Size**: ~50MB (includes Python runtime + OpenCV)
+- **Supported Platforms**: macOS, Linux (x64, arm64)
+
+## License
+
+MIT
