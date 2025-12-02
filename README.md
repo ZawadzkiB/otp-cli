@@ -24,7 +24,7 @@ OTP CLI comes as two binaries:
 
 **Install to /usr/local/bin (requires sudo):**
 ```bash
-curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.2/otp -o /tmp/otp && \
+curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.3/otp -o /tmp/otp && \
 curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.2/otp-scan -o /tmp/otp-scan && \
 sudo mv /tmp/otp /tmp/otp-scan /usr/local/bin/ && \
 sudo chmod +x /usr/local/bin/otp /usr/local/bin/otp-scan
@@ -33,7 +33,7 @@ sudo chmod +x /usr/local/bin/otp /usr/local/bin/otp-scan
 **Or install to ~/bin (no sudo required):**
 ```bash
 mkdir -p ~/bin && \
-curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.2/otp -o ~/bin/otp && \
+curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.3/otp -o ~/bin/otp && \
 curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.2/otp-scan -o ~/bin/otp-scan && \
 chmod +x ~/bin/otp ~/bin/otp-scan
 ```
@@ -45,7 +45,7 @@ chmod +x ~/bin/otp ~/bin/otp-scan
 
 **Install only the fast binary (skip QR scanning):**
 ```bash
-curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.2/otp -o ~/bin/otp && chmod +x ~/bin/otp
+curl -fsSL https://github.com/ZawadzkiB/otp-cli/releases/download/0.0.3/otp -o ~/bin/otp && chmod +x ~/bin/otp
 ```
 
 ### Manual download
@@ -114,6 +114,13 @@ otp get <alias>
 otp get github -v
 # Output: 123456 (copied to clipboard)
 # Valid for 18s
+
+# Raw output for scripts/pipes (no clipboard, no extra text)
+otp get github -r
+# Output: 123456
+
+# Example: pipe to another command
+otp get github -r | xargs echo "Code:"
 ```
 
 ### List all entries

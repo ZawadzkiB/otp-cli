@@ -396,30 +396,36 @@ def cmd_get(args):
     """Get OTP code for an alias"""
     alias = args.alias.lower()
     secrets = load_secrets()
-    
+
     if alias not in secrets:
-        print(f"Error: Alias '{alias}' not found")
-        print(f"Use 'otp list' to see available aliases")
+        print(f"Error: Alias '{alias}' not found", file=sys.stderr)
+        print(f"Use 'otp list' to see available aliases", file=sys.stderr)
         sys.exit(1)
-    
+
     entry = secrets[alias]
     secret = entry["secret"] if isinstance(entry, dict) else entry
     digits = entry.get("digits", 6) if isinstance(entry, dict) else 6
     period = entry.get("period", 30) if isinstance(entry, dict) else 30
-    
+
     code = totp(secret, digits, period)
+
+    # Raw mode: output only the code (for scripts/pipes)
+    if args.raw:
+        print(code)
+        return
+
     remaining = get_time_remaining(period)
-    
+
     # Copy to clipboard
     if CLIPBOARD_AVAILABLE:
         pyperclip.copy(code)
         clipboard_msg = " (copied to clipboard)"
     else:
         clipboard_msg = ""
-    
+
     # Display
     print(f"{code}{clipboard_msg}")
-    
+
     if args.verbose:
         print(f"Valid for {remaining}s")
 
@@ -1011,6 +1017,7 @@ def main():
     get_parser = subparsers.add_parser("get", help="Get OTP code")
     get_parser.add_argument("alias", help="Alias of the secret")
     get_parser.add_argument("--verbose", "-v", action="store_true", help="Show time remaining")
+    get_parser.add_argument("--raw", "-r", action="store_true", help="Output only the code (for scripts/pipes)")
     
     # List command
     subparsers.add_parser("list", help="List all stored aliases")
