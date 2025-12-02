@@ -17,8 +17,8 @@ A fast, secure command-line TOTP (Time-based One-Time Password) manager. Generat
 ## Quick Install
 
 OTP CLI comes as two binaries:
-- **`otp`** - Fast (~1s startup) for daily use: get, list, add, edit, remove, export, import, cache, init
-- **`otp-scan`** - QR code scanning (~4s startup, includes OpenCV)
+- **`otp`** - for daily use: get, list, add, edit, remove, export, import, cache, init
+- **`otp-scan`** - QR code scanning (includes OpenCV)
 
 ### One-line install (macOS/Linux)
 
